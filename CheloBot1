@@ -1,0 +1,61 @@
+pip install requests
+pip install pandas
+import requests
+import pandas as pd
+import time
+
+def obtener_datos(symbol, timeframe='1m', limit=25):
+    url = f"https://api.tuplataforma.com/market_data/{symbol}/{timeframe}?limit={limit}"
+    response = requests.get(url)
+    data = response.json()
+    return data
+
+def calcular_medias_moviles(datos, periodos):
+    df = pd.DataFrame(datos)
+    for periodo in periodos:
+        df[f'EMA_{periodo}'] = df['close'].ewm(span=periodo, adjust=False).mean()
+    return df
+
+def direccion_ultima_vela(df):
+    if df['close'].iloc[-1] > df['open'].iloc[-1]:
+        return 'alcista'
+    else:
+        return 'bajista'
+
+def lateralizacion(df):
+    for i in range(3, 7):
+        subset = df[-i:]
+        if all(subset['close'].between(subset[f'EMA_{5}'], subset[f'EMA_{14}'])):
+            return True
+    return False
+
+def cruce_ema_25(df):
+    if df['close'].iloc[-1] > df['EMA_25'].iloc[-1] and df['close'].iloc[-2] <= df['EMA_25'].iloc[-2]:
+        return 'arriba'
+    elif df['close'].iloc[-1] < df['EMA_25'].iloc[-1] and df['close'].iloc[-2] >= df['EMA_25'].iloc[-2]:
+        return 'abajo'
+    return None
+
+def colocar_orden(tipo, symbol, amount):
+    url = f"https://api.tuplataforma.com/trade"
+    orden = {
+        "symbol": symbol,
+        "type": tipo,
+        "amount": amount,
+        "expiry": "1m"
+    }
+    response = requests.post(url, json=orden)
+    if response.status_code == 200:
+        print(f"Orden {tipo} de {amount} colocada con éxito en {symbol}")
+        return True
+    else:
+        print(f"Error al colocar la orden: {response.json()}")
+        return False
+
+def verificar_resultado_orden(order_id):
+    # Implementa la lógica para verificar el resultado de la orden según tu API
+    # Esta función debe devolver True si la orden fue ganadora y False si fue perdedora
+    pass
+
+def ejecutar_robot(symbol):
+    amount
